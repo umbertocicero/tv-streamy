@@ -1,9 +1,20 @@
 {
   "name": "tv-streamy",
-  "version": "1.0.0",
   "private": true,
-  "description": "A simple TV streaming web app",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web app social per tracciare serie TV e film — clone di TV Time",
   "scripts": {
-    "start": "python3 -m http.server 8000"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
   }
 }
