@@ -1,7 +1,7 @@
-// TV Streamy — catalogo mock (in un'app reale arriverebbe da TMDB o simile)
-const GENRES = ["Drama","Comedy","Action","Animation","Romance","Crime","Adventure","Fantasy","Anime","Suspense","Mystery","Science fiction","Thriller","Family","Musical"];
+// Catalogo mock: in un'app reale arriverebbe da un'API tipo TMDB.
+export const GENRES = ["Drama","Comedy","Action","Animation","Romance","Crime","Adventure","Fantasy","Anime","Suspense","Mystery","Science fiction","Thriller","Family","Musical"];
 
-const CATALOG = [
+export const CATALOG = [
   { id: "hotd", type: "serie", title: "House of the Dragon", genres: ["Drama","Fantasy","Action"], year: 2022, rating: 4.5, votes: 812340, added: 1204411,
     overview: "Ambientata duecento anni prima degli eventi de Il Trono di Spade, la serie racconta la storia della casa Targaryen e della guerra civile nota come la Danza dei Draghi.",
     cast: [["Emma D'Arcy","Rhaenyra"],["Matt Smith","Daemon"],["Olivia Cooke","Alicent"]],
@@ -141,40 +141,4 @@ const CATALOG = [
     trailer: "01:45", comments: 320 },
 ];
 
-const SEED_COMMENTS = {
-  vfi: [
-    { user: "Martina 🎀", date: "dom 21 giu 2026", text: "and then he left a voicemail for Isabelle too", img: "🐈", likes: 3657, replies: 10 },
-    { user: "Mai", date: "gio 25 giu 2026", text: "HER😭SISTER😭DANCING😭BEHIND😭HER", img: "💃", likes: 2101, replies: 4 },
-    { user: "Luca", date: "ven 26 giu 2026", text: "Zoey Deutch carries this movie on her back, che interpretazione!", likes: 890, replies: 2 },
-    { user: "Aria", date: "sab 27 giu 2026", text: "Non ero pronta al finale. NON ERO PRONTA.", likes: 512, replies: 7 },
-  ],
-  default: [
-    { user: "Giorgio", date: "lun 6 lug 2026", text: "Capolavoro assoluto, rivisto per la terza volta.", likes: 214, replies: 3 },
-    { user: "Sofia", date: "mar 7 lug 2026", text: "L'episodio 3 mi ha distrutto emotivamente 😭", likes: 156, replies: 1 },
-    { user: "Anna", date: "mer 8 lug 2026", text: "Qualcuno ha notato il dettaglio nella scena finale?", likes: 89, replies: 5 },
-  ],
-};
-
-const EMOJI_REACTIONS = [
-  ["😵", "Scioccato"], ["😤", "Frustrato"], ["😭", "Triste"], ["🤔", "Riflessivo"],
-  ["🥺", "Commosso"], ["😆", "Divertito"], ["😱", "Sorpreso"], ["😑", "Annoiato"],
-];
-
-const STAR_LABELS = ["Brutto", "Ok", "Bello", "Super", "Wow"];
-
-const POLL_OPTIONS = ["Il cast", "La premessa", "I creatori", "Lo studio", "Il franchise o l'universo", "Altro"];
-
-const MEDALS = [
-  ["✒️", "Author"], ["🎙️", "Socializer"], ["😂", "Meme"], ["📺", "Emo"],
-  ["🔥", "Binger"], ["🌙", "Nottambulo"], ["🏆", "Completista"], ["💬", "Critico"],
-];
-
-const LANGUAGES = ["Afrikaans","Akan","Albanese","Amarico","Arabo","Armeno","Assamese","Azerbaigiano","Bambara","Basco","Bengalese","Bielorusso","Birmano","Bosniaco","Bretone","Bulgaro","Catalano","Ceco","Chirghiso","Cinese","Coreano","Croato","Danese","Ebraico","Estone","Finlandese","Francese","Galiziano","Gallese","Georgiano","Giapponese","Greco","Hindi","Indonesiano","Inglese","Islandese","Italiano","Lettone","Lituano","Macedone","Malese","Maltese","Norvegese","Olandese","Persiano","Polacco","Portoghese","Rumeno","Russo","Serbo","Slovacco","Sloveno","Spagnolo","Svedese","Tailandese","Tedesco","Turco","Ucraino","Ungherese","Vietnamita"];
-
-// Palette per i poster generati (niente immagini esterne: gradiente deterministico dal titolo)
-function posterGradient(title) {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-  const h1 = h % 360, h2 = (h1 + 40 + (h % 60)) % 360;
-  return `linear-gradient(160deg, hsl(${h1},45%,28%), hsl(${h2},55%,16%))`;
-}
+export const byId = id => CATALOG.find(x => x.id === id);
