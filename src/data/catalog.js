@@ -1,5 +1,29 @@
-// Catalogo mock: in un'app reale arriverebbe da un'API tipo TMDB.
+// Catalogo: fallback mock per offline + testing
+// In produzione, importa dataService.js per TMDB integration
+import { dataService } from './dataService.js';
+
 export const GENRES = ["Drama","Comedy","Action","Animation","Romance","Crime","Adventure","Fantasy","Anime","Suspense","Mystery","Science fiction","Thriller","Family","Musical"];
+
+// API pubblica per il resto dell'app
+export async function getCatalog(force = false) {
+  return dataService.fetchCatalog(force);
+}
+
+export async function byId(id) {
+  return dataService.fetchTitle(id);
+}
+
+export async function searchTitles(query, page = 1) {
+  return dataService.searchTitles(query, page);
+}
+
+export async function discoverTitles(type = 'movie', filters = {}) {
+  return dataService.discoverTitles(type, filters);
+}
+
+export async function fetchSeasonEpisodes(seriesId, seasonNumber) {
+  return dataService.fetchSeasonEpisodes(seriesId, seasonNumber);
+}
 
 export const CATALOG = [
   { id: "hotd", type: "serie", title: "House of the Dragon", genres: ["Drama","Fantasy","Action"], year: 2022, rating: 4.5, votes: 812340, added: 1204411,
@@ -140,5 +164,3 @@ export const CATALOG = [
     cast: [["Rodrigo Santoro","Nico"]],
     trailer: "01:45", comments: 320 },
 ];
-
-export const byId = id => CATALOG.find(x => x.id === id);
