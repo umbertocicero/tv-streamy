@@ -4,11 +4,12 @@ import Poster from "../components/common/Poster.jsx";
 import EpisodeRow from "../components/common/EpisodeRow.jsx";
 import ActionSheet from "../components/modals/ActionSheet.jsx";
 import SpoilerGate from "../components/modals/SpoilerGate.jsx";
-import { CATALOG, byId } from "../data/catalog.js";
+import { CATALOG } from "../data/catalog.js";
 import { EMOJI_REACTIONS, STAR_LABELS, POLL_OPTIONS } from "../data/constants.js";
 import { useApp } from "../state/AppStateContext.jsx";
 import { useNav } from "../state/NavContext.jsx";
 import { useToast } from "../state/ToastContext.jsx";
+import { useTitle } from "../hooks/useTitle.js";
 import { posterGradient, starsInline, fmtCount } from "../utils/format.js";
 import { titleSeen, epKey } from "../utils/library.js";
 
@@ -184,7 +185,18 @@ export default function Detail() {
   const [showActions, setShowActions] = useState(false);
   const [showSpoiler, setShowSpoiler] = useState(false);
 
-  const item = byId(nav.route.id);
+  const { title: item, loading, error } = useTitle(nav.route.id);
+
+  if (loading) {
+    return (
+      <div style={{ padding: "20px", textAlign: "center" }}>
+        <div className="skeleton" style={{ height: "200px", marginBottom: "20px", borderRadius: "8px" }} />
+        <div className="skeleton" style={{ height: "100px", marginBottom: "10px", borderRadius: "8px" }} />
+        <div className="skeleton" style={{ height: "100px", borderRadius: "8px" }} />
+      </div>
+    );
+  }
+
   if (!item) return null;
 
   const seen = titleSeen(S, item);
