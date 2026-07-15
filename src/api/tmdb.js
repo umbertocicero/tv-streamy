@@ -26,8 +26,8 @@ class RateLimiter {
 }
 
 export class TMDBClient {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
+  constructor() {
+    // Le richieste passano dal proxy del backend: nessuna API key nel client.
     this.baseUrl = TMDB_CONFIG.baseUrl;
     this.limiter = new RateLimiter(
       TMDB_CONFIG.rateLimit.maxRequests,
@@ -38,8 +38,7 @@ export class TMDBClient {
   async fetch(endpoint, params = {}) {
     await this.limiter.wait();
 
-    const url = new URL(`${this.baseUrl}${endpoint}`);
-    url.searchParams.append('api_key', this.apiKey);
+    const url = new URL(`${this.baseUrl}${endpoint}`, window.location.origin);
     url.searchParams.append('language', 'it-IT');
 
     Object.entries(params).forEach(([key, value]) => {
@@ -149,4 +148,4 @@ export class TMDBClient {
 }
 
 // Singleton client
-export const tmdbClient = new TMDBClient(TMDB_CONFIG.apiKey);
+export const tmdbClient = new TMDBClient();

@@ -58,6 +58,28 @@ class DataService {
     this.tmdb = tmdbClient;
     this.cache = cache;
     this.isCached = false;
+    // Indice in memoria dei titoli normalizzati già visti (catalogo, ricerche,
+    // dettagli): permette l'accesso sincrono byId() dalle viste.
+    // Il seeding dal catalogo mock è lazy per evitare il ciclo di import
+    // catalog.js ⇄ dataService.js in fase di valutazione dei moduli.
+    this.memory = new Map();
+    this.seeded = false;
+  }
+
+  seedMemory() {
+    if (this.seeded) return;
+    this.seeded = true;
+    FALLBACK_CATALOG.forEach(t => this.memory.set(String(t.id), t));
+  }
+
+  remember(title) {
+    if (title?.id != null) this.memory.set(String(title.id), title);
+    return title;
+  }
+
+  getFromMemory(id) {
+    this.seedMemory();
+    return this.memory.get(String(id)) || null;
   }
 
   // Fetch catalogo (trending iniziale)
@@ -69,6 +91,7 @@ class DataService {
       const cached = await this.cache.get(cacheKey);
       if (cached && cached.length > 0) {
         this.isCached = true;
+        cached.forEach(t => this.remember(t));
         return cached;
       }
     }
@@ -90,6 +113,8 @@ class DataService {
         })
         .filter(Boolean)
         .slice(0, 50); // Limita a 50
+
+      normalized.forEach(t => this.remember(t));
 
       // Salva in cache (7 giorni)
       await this.cache.set(cacheKey, normalized, TMDB_CONFIG.cacheExpiryHours);
@@ -113,13 +138,18 @@ class DataService {
       const cached = await this.cache.get(cacheKey);
       if (cached) {
         this.isCached = true;
-        return cached;
+        return this.remember(cached);
       }
     }
+
+    // I titoli del catalogo mock non esistono su TMDB: risolvi localmente
+    const local = FALLBACK_CATALOG.find(t => String(t.id) === String(id));
+    if (local) return local;
 
     try {
       const tmdbTitle = await this.tmdb.getTitle(id, 'auto');
       const normalized = normalizeTmdbTitle(tmdbTitle);
+      this.remember(normalized);
 
       // Salva in cache (7 giorni)
       await this.cache.set(cacheKey, normalized, TMDB_CONFIG.cacheExpiryHours);
@@ -146,10 +176,7 @@ class DataService {
         .filter(item => item.media_type !== 'person')
         .map(item => {
           try {
-            return normalizeTmdbTitle({
-              ...item,
-              media_type: item.media_type === 'person' ? 'movie' : item.media_type,
-            });
+            return this.remember(normalizeTmdbTitle(item));
           } catch {
             return null;
           }
@@ -157,7 +184,9 @@ class DataService {
         .filter(Boolean);
     } catch (error) {
       console.error('Search failed:', error);
-      return [];
+      // Fallback: ricerca locale nel catalogo mock
+      const ql = query.trim().toLowerCase();
+      return FALLBACK_CATALOG.filter(t => t.title.toLowerCase().includes(ql));
     }
   }
 
@@ -169,10 +198,10 @@ class DataService {
       return results
         .map(item => {
           try {
-            return normalizeTmdbTitle({
+            return this.remember(normalizeTmdbTitle({
               ...item,
               media_type: type === 'tv' ? 'tv' : 'movie',
-            });
+            }));
           } catch {
             return null;
           }

@@ -9,8 +9,10 @@ export async function getCatalog(force = false) {
   return dataService.fetchCatalog(force);
 }
 
-export async function byId(id) {
-  return dataService.fetchTitle(id);
+// Accesso sincrono: indice in memoria (titoli TMDB già caricati) + fallback mock.
+// Le viste che devono caricare un titolo non ancora visto usano useTitle(id).
+export function byId(id) {
+  return dataService.getFromMemory(id) || CATALOG.find(x => String(x.id) === String(id)) || null;
 }
 
 export async function searchTitles(query, page = 1) {

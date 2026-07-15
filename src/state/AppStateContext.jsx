@@ -1,11 +1,15 @@
-// Store applicativo: unica fonte di verità per lo stato utente, persistito in localStorage.
-// Le azioni sono aggiornamenti immutabili; i componenti leggono via useApp().
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+// Store applicativo: unica fonte di verità per lo stato utente.
+// Persistito in localStorage (offline-first) e sincronizzato col backend:
+// pull all'avvio, push con debounce a ogni modifica. In caso di conflitto
+// di versione (scrittura da un altro dispositivo) vince lo stato remoto.
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { byId } from "../data/catalog.js";
+import { backend } from "../api/backend.js";
 import { epKey, watchMinutes } from "../utils/library.js";
 import { todayLabel } from "../utils/format.js";
 
 const STORAGE_KEY = "tvstreamy";
+const SYNC_DEBOUNCE_MS = 1200;
 
 export const DEFAULT_STATE = {
   loggedIn: false,
@@ -40,9 +44,57 @@ const AppStateContext = createContext(null);
 
 export function AppStateProvider({ children }) {
   const [S, setS] = useState(load);
+  const [syncStatus, _setSyncStatus] = useState("idle"); // idle | syncing | online | offline
+  const versionRef = useRef(null);   // versione remota su cui si basa lo stato locale
+  const hydratedRef = useRef(false); // evita il push prima del pull iniziale
+  const offlineRef = useRef(false);
+  const setSyncStatus = st => { offlineRef.current = st === "offline"; _setSyncStatus(st); };
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  }, [S]);
+
+  // Pull iniziale: se il server ha uno stato per questo sync ID, sostituisce il locale.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await backend.getState();
+        if (cancelled) return;
+        if (remote) {
+          versionRef.current = remote.version;
+          setS(prev => ({ ...DEFAULT_STATE, ...remote.data }));
+        }
+        setSyncStatus("online");
+      } catch {
+        if (!cancelled) setSyncStatus("offline"); // backend assente: l'app resta locale
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Push con debounce a ogni modifica dello stato.
+  useEffect(() => {
+    if (!hydratedRef.current || offlineRef.current) return;
+    const timer = setTimeout(async () => {
+      try {
+        const r = await backend.putState(S, versionRef.current, S.username);
+        versionRef.current = r.version;
+        setSyncStatus("online");
+      } catch (e) {
+        if (e.status === 409 && e.payload?.remote) {
+          // Un altro dispositivo ha scritto: adotta lo stato remoto.
+          versionRef.current = e.payload.remote.version;
+          setS({ ...DEFAULT_STATE, ...e.payload.remote.data });
+          setSyncStatus("online");
+        } else {
+          setSyncStatus("offline");
+        }
+      }
+    }, SYNC_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
   }, [S]);
 
   const actions = useMemo(() => {
@@ -58,6 +110,7 @@ export function AppStateProvider({ children }) {
         set(s => ({ ...s, loggedIn: true, added: s.added.length ? s.added : ["hotd"] })),
       logout: () => set(s => ({ ...s, loggedIn: false })),
       deleteAccount: () => {
+        backend.deleteAccount().catch(() => {}); // best effort: rimuove anche i dati remoti
         localStorage.removeItem(STORAGE_KEY);
         setS({ ...DEFAULT_STATE });
       },
@@ -139,7 +192,7 @@ export function AppStateProvider({ children }) {
     };
   }, []);
 
-  const value = useMemo(() => ({ S, ...actions }), [S, actions]);
+  const value = useMemo(() => ({ S, syncStatus, ...actions }), [S, syncStatus, actions]);
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
 }
 

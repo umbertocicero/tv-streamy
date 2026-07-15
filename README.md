@@ -1,103 +1,138 @@
 # TV Streamy
 
-Web app social per tracciare la visione di serie TV e film — un clone di TV Time che "prova a rinascere dalle sue ceneri". SPA React mobile-first, dark theme con accento giallo, senza backend: lo stato utente vive in `localStorage` e il catalogo è mock (pronto a essere sostituito da un'API tipo TMDB).
+Web app social per tracciare la visione di serie TV e film — un clone di TV Time che "prova a rinascere dalle sue ceneri". SPA React mobile-first (dark theme, accento giallo) + backend Node/Express con SQLite: catalogo reale da TMDB, commenti persistenti condivisi e sincronizzazione multi-dispositivo. L'autenticazione vera arriverà in seguito; per ora i dispositivi si identificano con un codice di sincronizzazione.
 
 ## Cosa fa
 
-- **Login** (mock) con provider social — Apple, Facebook, Google, X, Email — su mosaico di locandine, con opt-in email e link a termini/privacy.
-- **Serie**: watchlist con avanzamento episodio per episodio (`S01 | E01 +N`), badge di stato (Non iniziato / In corso), check "visto", tab "In arrivo".
+- **Catalogo reale da TMDB**: trending, ricerca, dettagli, cast, episodi e poster arrivano da [The Movie Database](https://www.themoviedb.org) attraverso il proxy del backend (la API key non è mai esposta al client). Cache server-side in SQLite + cache client (IndexedDB) + fallback a un catalogo mock se il servizio è irraggiungibile.
+- **Sincronizzazione multi-dispositivo**: libreria, episodi visti, rating, reazioni, liste e impostazioni sono salvati sul server come documento versionato. Pull all'avvio, push automatico con debounce, risoluzione dei conflitti (ultimo che scrive vince, con rilevamento via versione). In Impostazioni → Sincronizzazione trovi il codice del dispositivo da inserire su un altro device per ritrovare la stessa libreria.
+- **Commenti reali e condivisi**: thread per titolo persistiti in SQLite, con like, risposte annidate, segnalazioni, filtro per lingua e cancellazione dei propri commenti. Barriera anti-spoiler per i titoli non visti.
+- **Serie**: watchlist con avanzamento episodio per episodio (`S01 | E01 +N`), badge di stato, check "visto", tab "In arrivo".
 - **Film**: libreria personale divisa in "Da vedere" e "Visti".
-- **Esplora**: feed a card, sezione "Scopri" con filtri (Trending / Most added, generi, toggle "includi già aggiunti"), ricerca con contatori sociali, tab Gruppi e Attività.
-- **Dettaglio titolo**: hero, generi, stato visione, tab **Info** (dove guardare, rating e voti, trama, trailer, cast, elenco episodi per le serie, titoli correlati, sondaggio, commenti) e tab **Altro** (dove l'hai visto, rating a 5 stelle Brutto→Wow, reazioni emoji).
-- **Commenti**: barriera anti-spoiler per i titoli non visti, like, risposta, segnalazione, composizione di nuovi commenti, filtro per lingua.
-- **Azioni rapide** su ogni titolo: personalizza, preferito, aggiungi a lista, rimuovi, condividi (Web Share API con fallback).
-- **Liste personalizzate** con visibilità privata/pubblica.
-- **Profilo**: contatori sociali, riepilogo statistiche, scaffali per liste, serie, film e preferiti.
-- **Statistiche**: tempo di visione, grafici giornalieri a barre, ritmo episodi/settimana, backlog in ore, data stimata di "essere in pari", medaglie/achievement.
-- **Impostazioni**: identificazione, social collegati, servizi di abbonamento, profilo privato, logout, eliminazione account; selezione lingue dei commenti.
+- **Esplora**: feed a card, sezione "Scopri" con filtri (Trending / Most added, generi), ricerca TMDB con debounce.
+- **Dettaglio titolo**: hero, generi, tab **Info** (rating, trama, trailer, cast, episodi, correlati, sondaggio, commenti) e tab **Altro** (dove l'hai visto, rating a 5 stelle, reazioni emoji).
+- **Liste personalizzate**, **profilo** con contatori e scaffali, **statistiche** (tempo di visione, grafici, backlog, medaglie), **impostazioni** complete.
 
-La specifica funzionale completa (derivata schermata per schermata dagli screenshot in `screenshot/`) è in [`docs/PROMPT.md`](docs/PROMPT.md).
+La specifica funzionale completa è in [`docs/PROMPT.md`](docs/PROMPT.md).
 
 ## Stack
 
 | Livello | Scelta | Perché |
 | --- | --- | --- |
-| UI | React 18 | componenti funzione + hook, nessuna classe |
-| Build | Vite | dev server istantaneo, bundle statico con `base: './'` deployabile ovunque |
-| Stato | Context + `useState`/`useMemo` | un solo store applicativo persistito in `localStorage`; niente Redux per un dominio così piccolo |
-| Navigazione | router interno a stack (`NavContext`) | l'app ha semantica mobile (push/back/reset); evita una dipendenza e funziona da qualunque path statico |
-| Stili | CSS globale a classi (`src/styles/global.css`) | design system unico dark-theme; nessun CSS-in-JS |
-| Dati | moduli mock in `src/data/` | il confine è già isolato: sostituire con un client TMDB non tocca le viste |
+| UI | React 18 + Vite | componenti funzione + hook; bundle statico con base relativa |
+| Stato client | Context + `useState` | un solo store persistito in `localStorage` (offline-first) e sincronizzato col backend |
+| Backend | Node 20+ / Express 5 | API REST minimale: stato, commenti, proxy TMDB; serve anche il frontend compilato |
+| Database | SQLite (`better-sqlite3`) | zero amministrazione, un file su disco persistente; WAL mode |
+| Dati esterni | TMDB API (free) | 900k+ titoli e poster via CDN; key solo server-side |
+| Identità | header `X-User-Id` (codice dispositivo) | placeholder esplicito: il middleware verrà sostituito dal login reale |
 
 ## Architettura
 
 ```
 tv-streamy/
-├── index.html                  # entry Vite
-├── vite.config.js
-├── package.json
-├── docs/
-│   └── PROMPT.md               # specifica funzionale completa (il "prompt")
-├── screenshot/                 # screenshot di riferimento dell'app originale
-└── src/
-    ├── main.jsx                # bootstrap: provider (stato, toast) + <App/>
-    ├── App.jsx                 # registro view -> pagina, scroll-to-top su navigazione
-    ├── styles/
-    │   └── global.css          # design system: variabili, layout, componenti
-    ├── data/                   # strato dati (mock, sostituibile con API)
-    │   ├── catalog.js          # CATALOG, GENRES, byId()
-    │   ├── comments.js         # commenti seed + commentsFor()
-    │   └── constants.js        # reazioni, etichette rating, sondaggio, medaglie, lingue
-    ├── utils/                  # funzioni pure, testabili in isolamento
-    │   ├── format.js           # formattazione/presentazione (gradiente poster, contatori, stelle…)
-    │   └── library.js          # selettori di dominio (prossimo episodio, statistiche, backlog…)
-    ├── state/                  # cross-cutting concerns come Context
-    │   ├── AppStateContext.jsx # store utente + azioni immutabili, persistenza localStorage
-    │   ├── NavContext.jsx      # router a stack: go / back / reset / setParams
-    │   └── ToastContext.jsx    # notifiche effimere
-    ├── components/
-    │   ├── layout/             # TopBar, BottomNav, Tabs
-    │   ├── common/             # Poster+QuickAdd, EpisodeRow, BarChart, Toggle, Sheet
-    │   └── modals/             # FilterSheet, ActionSheet, SpoilerGate, ComposeSheet
-    └── pages/                  # una schermata = un file
-        ├── Login.jsx    Series.jsx   Movies.jsx    Explore.jsx
-        ├── Browse.jsx   Search.jsx   Detail.jsx    Comments.jsx
-        └── Lists.jsx    Profile.jsx  Stats.jsx     Settings.jsx   Language.jsx
+├── server/                     # backend Express
+│   ├── index.js                # app: middleware identità, rotte, static dist/
+│   ├── db.js                   # schema SQLite (users, states, comments, likes, reports, tmdb_cache)
+│   └── routes/
+│       ├── state.js            # GET/PUT/DELETE /api/state — sync versionato multi-dispositivo
+│       ├── comments.js         # /api/titles/:id/comments, like, reply, report, delete
+│       └── tmdb.js             # proxy whitelisted /api/tmdb/* con cache SQLite
+├── src/
+│   ├── api/
+│   │   ├── backend.js          # client REST + gestione codice dispositivo
+│   │   └── tmdb.js             # client TMDB (passa dal proxy, rate-limited)
+│   ├── data/                   # dataService (orchestrator API+cache+fallback), cache IndexedDB, catalogo mock
+│   ├── hooks/                  # useTitle, useCatalog, useSearch
+│   ├── state/                  # AppStateContext (store + sync), NavContext, ToastContext
+│   ├── components/             # layout, common, modals
+│   └── pages/                  # 13 schermate
+├── Dockerfile                  # immagine unica frontend+backend
+└── docs/                       # PROMPT.md (specifica), SETUP_TMDB.md
 ```
 
-Principi seguiti:
+Flusso dati: le viste leggono selettori puri dallo store; lo store persiste in `localStorage` e sincronizza col backend (debounce 1,2 s, conflitti gestiti a versione). I metadati passano da `dataService`: memoria → IndexedDB → `/api/tmdb` (cache SQLite server) → TMDB; se tutto fallisce, catalogo mock. **L'app funziona anche senza backend**: resta locale e i commenti diventano dimostrativi in sola lettura.
 
-- **Separazione dei livelli**: dati (`data/`), logica di dominio (`utils/library.js`), stato (`state/`), presentazione (`components/`, `pages/`). Le viste non calcolano nulla: leggono selettori puri.
-- **Unica fonte di verità**: tutto lo stato utente passa da `AppStateContext`; le azioni sono aggiornamenti immutabili, la persistenza è un effetto (`useEffect` → `localStorage`).
-- **Componenti riusabili prima delle pagine**: `EpisodeRow` serve watchlist e dettaglio serie, `Sheet` è il contenitore di ogni modale, `Poster` incapsula il quick-add.
-- **Nessun asset esterno**: i poster sono gradienti deterministici dal titolo (`posterGradient`), quindi l'app funziona offline e senza API key.
+## API del backend
 
-## Come si avvia
+Tutte le rotte (tranne `/api/health` e `/api/tmdb/*`) richiedono l'header `X-User-Id` (8-64 caratteri alfanumerici) e accettano `X-Username` opzionale.
 
-Prerequisiti: Node.js ≥ 18.
+| Metodo | Rotta | Descrizione |
+| --- | --- | --- |
+| GET | `/api/health` | stato del servizio |
+| GET/PUT/DELETE | `/api/state` | stato utente versionato (PUT: `{data, baseVersion}` → 409 su conflitto) |
+| GET/POST | `/api/titles/:id/comments` | lista (`?langs=`) / nuovo commento `{text, lang?, parentId?}` |
+| GET | `/api/comments/:id/replies` | risposte a un commento |
+| POST | `/api/comments/:id/like` | toggle like |
+| POST | `/api/comments/:id/report` | segnalazione |
+| DELETE | `/api/comments/:id` | cancella (solo propri) |
+| GET | `/api/tmdb/*` | proxy TMDB whitelisted con cache |
+
+## Come si avvia (sviluppo)
+
+Prerequisiti: Node.js ≥ 20. Registra una API key TMDB gratuita (5 minuti): <https://www.themoviedb.org/settings/api> — senza key l'app usa il catalogo mock.
 
 ```bash
 npm install
-npm run dev        # dev server con HMR su http://localhost:5173
+cp .env.example .env.local          # e inserisci TMDB_API_KEY
+
+# terminale 1 — backend su :3001 (SQLite in ./data/)
+TMDB_API_KEY=la_tua_key npm run dev:server
+
+# terminale 2 — frontend Vite su :5173 (proxa /api verso :3001)
+npm run dev
 ```
 
-## Come si builda e si deploya
+## Come si builda
 
 ```bash
-npm run build      # genera il bundle statico in dist/
-npm run preview    # serve dist/ in locale per un controllo finale
+npm run build      # bundle statico in dist/
+npm start          # build + server unico su :3001 (API + frontend)
 ```
 
-`dist/` è un sito statico autosufficiente (base path relativa): si deploya su qualunque hosting statico senza configurazione.
+In produzione **basta il solo processo Node**: Express serve `dist/` e le API dallo stesso dominio, quindi niente CORS né configurazioni extra.
 
-- **GitHub Pages**: pubblica la cartella `dist/` (via action `actions/deploy-pages` o branch `gh-pages`).
-- **Netlify / Vercel / Cloudflare Pages**: build command `npm run build`, output directory `dist`.
-- **Server proprio**: copia `dist/` dietro un qualunque web server (nginx, Apache, `npx serve dist`).
+## Dove e come si deploya
 
-Non servono variabili d'ambiente né backend: l'app è client-only e i dati utente restano nel browser.
+Il backend ha bisogno di un **filesystem persistente** per SQLite (`DATA_DIR`). Variabili d'ambiente: `TMDB_API_KEY` (obbligatoria per il catalogo reale), `DATA_DIR`, `PORT` (di solito impostata dalla piattaforma).
 
-## Limiti noti / evoluzioni possibili
+### Render (consigliata: free tier + dischi persistenti)
+1. New → **Web Service** → collega il repo.
+2. Build command `npm install && npm run build`, start command `node server/index.js`.
+3. Aggiungi un **Disk** (es. 1 GB) montato su `/data` e imposta `DATA_DIR=/data`.
+4. Environment → `TMDB_API_KEY`.
 
-- Il catalogo è mock: il passo successivo è un client TMDB in `src/data/` (le viste non cambiano).
-- Login e funzioni social (follower, gruppi, attività) sono simulati lato client.
-- Lo stato è per-browser: per multi-dispositivo serve un backend con autenticazione reale.
+### Railway
+1. New Project → Deploy from GitHub.
+2. Aggiungi un **Volume** montato su `/data` e imposta `DATA_DIR=/data`.
+3. Variables → `TMDB_API_KEY`. Railway rileva `npm start` da solo (oppure imposta build `npm run build` e start `node server/index.js`).
+
+### Fly.io
+```bash
+fly launch --no-deploy            # usa il Dockerfile del repo
+fly volumes create data --size 1
+fly secrets set TMDB_API_KEY=la_tua_key
+# in fly.toml: [mounts] source="data" destination="/app/data"
+fly deploy
+```
+
+### VPS / server proprio (Docker)
+```bash
+docker build -t tv-streamy .
+docker run -d -p 3001:3001 \
+  -e TMDB_API_KEY=la_tua_key \
+  -v tvstreamy-data:/app/data \
+  tv-streamy
+```
+Metti davanti nginx/Caddy per TLS. Senza Docker: `npm ci && npm run build && TMDB_API_KEY=… node server/index.js` sotto systemd o pm2.
+
+### E il solo frontend statico (GitHub Pages, Netlify, Vercel)?
+Possibile ma degradato: `dist/` si deploya ovunque, però senza backend niente commenti reali, niente sync e niente TMDB (il proxy vive sul server). In quel caso deploya il backend altrove (Render/Railway/Fly) e imposta al build `VITE_API_URL=https://il-tuo-backend/api`. Nota per Vercel/Netlify "serverless": SQLite su disco non sopravvive tra le invocazioni — preferisci le piattaforme con disco persistente qui sopra.
+
+## Limiti noti / prossimi passi
+
+- **Autenticazione**: oggi l'identità è un codice dispositivo (`X-User-Id`). Il middleware in `server/index.js` è il punto unico dove innestare il login vero (JWT/OAuth) senza toccare le rotte.
+- I conflitti di sync sono risolti "ultimo che scrive vince" (con rilevamento a versione): sufficiente per un utente con più dispositivi, non per la collaborazione.
+- Funzioni social (follower, gruppi, attività) ancora simulate lato client.
+- SQLite è perfetto per un'istanza singola; per scalare orizzontalmente serve passare a Postgres (le query in `server/` sono SQL standard).
+
+I dati e le immagini dei titoli sono forniti da [TMDB](https://www.themoviedb.org). Questo prodotto usa le API TMDB ma non è approvato o certificato da TMDB.

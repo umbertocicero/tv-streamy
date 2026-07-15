@@ -6,6 +6,56 @@ import Toggle from "../components/common/Toggle.jsx";
 import { useApp } from "../state/AppStateContext.jsx";
 import { useNav } from "../state/NavContext.jsx";
 import { useToast } from "../state/ToastContext.jsx";
+import { getSyncId, setSyncId } from "../api/backend.js";
+
+// Sincronizzazione multi-dispositivo: mostra il codice del dispositivo e
+// permette di inserirne un altro per condividere la stessa libreria.
+// (Con l'autenticazione reale questo diventerà il login.)
+function SyncBlock() {
+  const { syncStatus } = useApp();
+  const toast = useToast();
+  const [code, setCode] = useState("");
+  const statusLabel = {
+    idle: "…", syncing: "Sincronizzazione…", online: "🟢 Connesso", offline: "🔴 Non connesso",
+  }[syncStatus];
+
+  return (
+    <div className="set-block">
+      <h3>Sincronizzazione <span className="save">{statusLabel}</span></h3>
+      <div className="set-field">
+        <div className="fl">Codice di questo dispositivo</div>
+        <div className="ro" style={{ userSelect: "all", wordBreak: "break-all" }}>{getSyncId()}</div>
+        <div className="set-note">
+          Inserisci questo codice su un altro dispositivo per ritrovare la stessa libreria,
+          gli episodi visti e le liste.
+        </div>
+      </div>
+      <div className="set-field">
+        <div className="fl">Collega a un altro dispositivo</div>
+        <input
+          placeholder="Incolla qui il codice dell'altro dispositivo"
+          value={code}
+          onChange={e => setCode(e.target.value)}
+        />
+      </div>
+      <button
+        className="browse-btn"
+        style={{ margin: "6px 0 14px" }}
+        onClick={() => {
+          try {
+            setSyncId(code);
+            toast("Dispositivo collegato, ricarico…");
+            setTimeout(() => window.location.reload(), 600);
+          } catch (e) {
+            toast(e.message);
+          }
+        }}
+      >
+        COLLEGA
+      </button>
+    </div>
+  );
+}
 
 function AccountTab() {
   const { S, patch, logout, deleteAccount } = useApp();
@@ -43,6 +93,7 @@ function AccountTab() {
           Cambia password <span>›</span>
         </button>
       </div>
+      <SyncBlock />
       <div className="set-block">
         <h3>Social network</h3>
         <button className="set-link" onClick={() => toast("Account collegati (mock)")}>
