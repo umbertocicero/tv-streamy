@@ -2,7 +2,7 @@
 // Persistito in localStorage (offline-first) e sincronizzato col backend:
 // pull all'avvio, push con debounce a ogni modifica. In caso di conflitto
 // di versione (scrittura da un altro dispositivo) vince lo stato remoto.
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { byId } from "../data/catalog.js";
 import { backend } from "../api/backend.js";
 import { epKey, watchMinutes } from "../utils/library.js";
@@ -48,7 +48,10 @@ export function AppStateProvider({ children }) {
   const versionRef = useRef(null);   // versione remota su cui si basa lo stato locale
   const hydratedRef = useRef(false); // evita il push prima del pull iniziale
   const offlineRef = useRef(false);
-  const setSyncStatus = st => { offlineRef.current = st === "offline"; _setSyncStatus(st); };
+  const setSyncStatus = useCallback(st => { 
+    offlineRef.current = st === "offline"; 
+    _setSyncStatus(st); 
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
