@@ -34,6 +34,12 @@ const PAGES = {
 };
 
 export default function App() {
+  return (
+    <AppContainer />
+  );
+}
+
+function AppContainer() {
   const { S } = useApp();
   return (
     <NavProvider initial={{ view: S.loggedIn ? "serie" : "login" }}>
