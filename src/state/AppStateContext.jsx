@@ -76,7 +76,7 @@ export function AppStateProvider({ children }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [setSyncStatus]);
+  }, []);
 
   // Push con debounce a ogni modifica dello stato.
   useEffect(() => {
@@ -98,7 +98,7 @@ export function AppStateProvider({ children }) {
       }
     }, SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [S, setSyncStatus]);
+  }, [S]);
 
   const actions = useMemo(() => {
     const set = fn => setS(prev => fn(prev));
