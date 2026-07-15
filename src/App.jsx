@@ -33,6 +33,15 @@ const PAGES = {
   lingua: Language,
 };
 
+export default function App() {
+  const { S } = useApp();
+  return (
+    <NavProvider initial={{ view: S.loggedIn ? "serie" : "login" }}>
+      <Screen />
+    </NavProvider>
+  );
+}
+
 function Screen() {
   const { route } = useNav();
 
@@ -44,14 +53,5 @@ function Screen() {
     <div id="app">
       <Page />
     </div>
-  );
-}
-
-export default function App() {
-  const { S } = useApp();
-  return (
-    <NavProvider initial={{ view: S.loggedIn ? "serie" : "login" }}>
-      <Screen />
-    </NavProvider>
   );
 }

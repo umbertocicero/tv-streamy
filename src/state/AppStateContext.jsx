@@ -196,4 +196,10 @@ export function AppStateProvider({ children }) {
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
 }
 
-export const useApp = () => useContext(AppStateContext);
+export const useApp = () => {
+  const ctx = useContext(AppStateContext);
+  if (!ctx) {
+    throw new Error("useApp() deve essere usato dentro <AppStateProvider>");
+  }
+  return ctx;
+};

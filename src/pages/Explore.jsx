@@ -14,27 +14,31 @@ const DEFAULT_FILTERS = { sort: "trending", genres: [], includeAdded: false };
 function Feed() {
   const nav = useNav();
   const feed = [...CATALOG].sort((a, b) => b.added - a.added).slice(0, 10);
-  return feed.map(item => (
-    <div className="feed-card" key={item.id}>
-      <div
-        className="hero"
-        style={{ background: posterGradient(item.title) }}
-        onClick={() => nav.go("detail", { id: item.id })}
-      >
-        <QuickAddButton id={item.id} />
-        <div className="label">
-          <h4>
-            {typeIcon(item.type)} {item.title}
-          </h4>
-          <div className="sub">
-            {item.runtime ? `${item.runtime} • ` : ""}
-            {item.genres.join(", ")}
+  return (
+    <>
+      {feed.map(item => (
+        <div className="feed-card" key={item.id}>
+          <div
+            className="hero"
+            style={{ background: posterGradient(item.title) }}
+            onClick={() => nav.go("detail", { id: item.id })}
+          >
+            <QuickAddButton id={item.id} />
+            <div className="label">
+              <h4>
+                {typeIcon(item.type)} {item.title}
+              </h4>
+              <div className="sub">
+                {item.runtime ? `${item.runtime} • ` : ""}
+                {item.genres.join(", ")}
+              </div>
+            </div>
           </div>
+          <div className="desc">{item.overview}</div>
         </div>
-      </div>
-      <div className="desc">{item.overview}</div>
-    </div>
-  ));
+      ))}
+    </>
+  );
 }
 
 function Discover() {
