@@ -16,7 +16,6 @@ COPY --from=build /app/dist ./dist
 
 # Il database SQLite vive in /app/data: montare un volume per la persistenza
 ENV DATA_DIR=/app/data
-VOLUME /app/data
 
 EXPOSE 3001
 CMD ["node", "server/index.js"]
